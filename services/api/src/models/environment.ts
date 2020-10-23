@@ -1,6 +1,5 @@
 import moment from 'moment';
 
-import esClient from '../clients/esClient';
 import { prepare, query } from '../util/db';
 
 import * as logger from '../logger';
@@ -42,7 +41,7 @@ type projectEnvWithDataType = (
 
 export const EnvironmentModel = (clients) => {
 
-  const { sqlClient } = clients;
+  const { sqlClient, esClient } = clients;
 
   /**
    * Get all environments for a project.
@@ -421,15 +420,30 @@ export const EnvironmentModel = (clients) => {
 
       var total = 0;
 
-      const result = ((legacyResult, newResult) => {
-        if (legacyResult.hits.total.value !== 0){
-          return legacyResult;
-        }
-        if (newResult.hits.total.value !== 0){
-          return newResult;
-        }
-        return [];
-      })(legacyResult, newResult)
+      /*
+      foreach hourlybucket (#both result buckets should have the exact same amount of buckets)
+      add to total
+         if newResult.bucketcount is not 0 use newResult.bucketcount
+         if legacyResult.bucketcount is not 0 use legacyResult.bucketcount
+         if newResult.bucketcount is 0 and legacyResult.bucketcount is 0
+            --> if newResult.average is not 0, use newResult.average
+            --> if legacyResult.average is not 0, use legacyResult.average
+            --> if both are 0, use newResult.average
+      */
+
+      const legacyBuckets = legacyResult.aggregations.hourly.buckets;
+      const legacyResultCount = legacyResult.aggregations.hourly.buckets.length;
+
+      const newBuckets = newResult.aggregations.hourly.buckets;
+      const newResultCount = newResult.aggregations.hourly.buckets.length;
+
+      if (legacyResultCount !== newResultCount){
+        throw new Error("Legacy logging buckets count does not equal New logging buckets count. Something is fishy...");
+      }
+
+      for (let i = 0; i < legacyResultCount; i++) {
+
+      }
 
       // loop through all hourly sum counts
       // if the sum count is empty, this means we have missing data and we use the overall average instead.

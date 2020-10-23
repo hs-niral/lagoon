@@ -14,6 +14,7 @@ const {
   keycloakHasPermission
 } = require('./util/auth');
 const { getSqlClient } = require('./clients/sqlClient');
+const esClient = require('./clients/esClient');
 const redisClient = require('./clients/redisClient');
 const { getKeycloakAdminClient } = require('./clients/keycloak-admin');
 const logger = require('./logger');
@@ -93,7 +94,7 @@ const apolloServer = new ApolloServer({
             keycloakAdminClient,
             sqlClient
           }),
-          EnvironmentModel: EnvironmentModel.EnvironmentModel({ sqlClient })
+          EnvironmentModel: EnvironmentModel.EnvironmentModel({ sqlClient, esClient })
         }
       };
     },
