@@ -420,6 +420,18 @@ export const EnvironmentModel = (clients) => {
 
       var total = 0;
 
+      const legacyBuckets = legacyResult && legacyResult.aggregations && legacyResult.aggregations.hourly && legacyResult.aggregations.hourly.buckets ? legacyResult.aggregations.hourly.buckets : 0;
+      const legacyResultCount = legacyResult && legacyResult.aggregations && legacyResult.aggregations.hourly && legacyResult.aggregations.hourly.buckets && legacyResult.aggregations.hourly.buckets.length ? legacyResult.aggregations.hourly.buckets.length : 0;
+      const legacyAvg = legacyResult && legacyResult.aggregations && legacyResult.aggregations.average && legacyResult.aggregations.average.value ? legacyResult.aggregations.average.value : 0;
+
+      const newBuckets = newResult && newResult.aggregations && newResult.aggregations.hourly && newResult.aggregations.hourly.buckets ? newResult.aggregations.hourly.buckets : 0;
+      const newResultCount = newResult && newResult.aggregations && newResult.aggregations.hourly && newResult.aggregations.hourly.buckets && newResult.aggregations.hourly.buckets.length ? newResult.aggregations.hourly.buckets.length : 0;
+      const newAvg = newResult && newResult.aggregations && newResult.aggregations.average && newResult.aggregations.average.value ? newResult.aggregations.average.value : 0;
+
+      if (legacyResultCount !== newResultCount){
+        throw new Error("Legacy logging buckets count does not equal New logging buckets count. Something is fishy...");
+      }
+
       /*
       foreach hourlybucket (#both result buckets should have the exact same amount of buckets)
       add to total
@@ -431,25 +443,24 @@ export const EnvironmentModel = (clients) => {
             --> if both are 0, use newResult.average
       */
 
-      const legacyBuckets = legacyResult.aggregations.hourly.buckets;
-      const legacyResultCount = legacyResult.aggregations.hourly.buckets.length;
-
-      const newBuckets = newResult.aggregations.hourly.buckets;
-      const newResultCount = newResult.aggregations.hourly.buckets.length;
-
-      if (legacyResultCount !== newResultCount){
-        throw new Error("Legacy logging buckets count does not equal New logging buckets count. Something is fishy...");
-      }
-
       for (let i = 0; i < legacyResultCount; i++) {
-
+        if (newResultCount !== 0 && newBuckets[i].count && newBuckets[i].count.value !== 0){
+          // We have new logging data, use this for total
+          total += newBuckets[i].count.value;
+        }else if (legacyResultCount !== 0 && legacyBuckets[i].count && legacyBuckets[i].count.value !== 0){
+          // We have legacy data
+          total += legacyBuckets[i].count.value;
+        }else{
+          // Both legacy and new logging buckets are zero, meaning we have missing data, use the avg
+          if(newAvg !== 0){
+            total += newAvg;
+          }else if (legacyAvg !== 0){
+            total += legacyAvg;
+          }else{
+            total += newAvg;
+          }
+        }
       }
-
-      // loop through all hourly sum counts
-      // if the sum count is empty, this means we have missing data and we use the overall average instead.
-      result.aggregations.hourly.buckets.forEach(bucket => {
-        total += (bucket.count.value === 0 ? parseInt(result.aggregations.average.value) : bucket.count.value);
-      });
 
       return { total };
 
