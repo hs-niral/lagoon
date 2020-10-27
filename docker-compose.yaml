@@ -198,6 +198,16 @@ services:
       lagoon.type: none
       lagoon.template: services/kubernetesremove/.lagoon.app.yml
       lagoon.image: amazeeiolagoon/kubernetesremove:testing-billing
+  controllerhandler:
+    image: ${IMAGE_REPO:-lagoon}/controllerhandler
+    command: yarn run dev
+    volumes:
+      - ./services/controllerhandler/src:/app/services/controllerhandler/src
+      - ./node-packages:/app/node-packages:delegated
+    labels:
+      lagoon.type: custom
+      lagoon.template: services/controllerhandler/.lagoon.app.yml
+      lagoon.image: amazeeiolagoon/controllerhandler:testing-billing
   logs2rocketchat:
     image: ${IMAGE_REPO:-lagoon}/logs2rocketchat
     command: yarn run dev
@@ -262,11 +272,18 @@ services:
     volumes:
       - ./services/api/src:/app/services/api/src
       - ./node-packages:/app/node-packages:delegated
+    environment:
+      - CI=${CI:-true}
+      - REGISTRY=172.17.0.1:8084 # Docker network bridge and forwarded port for harbor-nginx
     depends_on:
       - api-db
       - keycloak
     ports:
       - '3000:3000'
+    # Uncomment for local new relic tracking
+    # environment:
+    #   - NEW_RELIC_LICENSE_KEY=
+    #   - NEW_RELIC_APP_NAME=api-local
     labels:
       lagoon.type: custom
       lagoon.template: services/api/.lagoon.app.yml
@@ -780,3 +797,9 @@ services:
       lagoon.template: services/harborregistryctl/harborregistry.yml
       lagoon.name: harborregistry
       lagoon.image: amazeeiolagoon/harborregistryctl:testing-billing
+  api-redis:
+    image: ${IMAGE_REPO:-lagoon}/api-redis
+    labels:
+      lagoon.type: custom
+      lagoon.template: services/api-redis/.lagoon.app.yml
+      lagoon.image: amazeeiolagoon/api-redis:testing-billing
