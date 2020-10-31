@@ -151,7 +151,8 @@ const apolloServer = new ApolloServer({
           }),
           EnvironmentModel: EnvironmentModel.EnvironmentModel({
             keycloakAdminClient,
-            sqlClient
+            sqlClient,
+            esClient
           })
         }
       };
